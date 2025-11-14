@@ -4,6 +4,7 @@ import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import TablePage from './components/TablePage';
 import './App.css';
+import UserTable from './components/UserTable';
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);

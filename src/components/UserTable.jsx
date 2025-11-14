@@ -1,90 +1,121 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { readDB, writeDB } from '../utils/db';
 import * as XLSX from 'xlsx';
-import { saveAs } from 'file-saver';
 import '../App.css';
 
-export default function UserTable({ records, onEdit, onDelete }) {
+export default function UserTable() {
+  const [records, setRecords] = useState([]);
   const [search, setSearch] = useState('');
-  const [sortKey, setSortKey] = useState('id');
-  const [sortDir, setSortDir] = useState('asc');
+  const [sortOrder, setSortOrder] = useState('asc');
+  const navigate = useNavigate();
 
-  const handleSort = (key) => {
-    const newDir = sortKey === key && sortDir === 'asc' ? 'desc' : 'asc';
-    setSortKey(key);
-    setSortDir(newDir);
+  // ✅ Load records when component mounts
+  useEffect(() => {
+    try {
+      const data = readDB();
+      setRecords(data);
+    } catch (error) {
+      console.error('Error loading records:', error);
+    }
+  }, []);
+
+  // ✅ Search Filter
+  const filtered = records.filter((record) =>
+    Object.values(record)
+      .join(' ')
+      .toLowerCase()
+      .includes(search.toLowerCase())
+  );
+
+  // ✅ Sorting Logic
+  const sorted = [...filtered].sort((a, b) => {
+    const nameA = a.name.toLowerCase();
+    const nameB = b.name.toLowerCase();
+    return sortOrder === 'asc'
+      ? nameA.localeCompare(nameB)
+      : nameB.localeCompare(nameA);
+  });
+
+  // ✅ Delete Record
+  const handleDelete = (id) => {
+    try {
+      const updated = records.filter((record) => record.id !== id);
+      setRecords(updated);
+      writeDB(updated);
+    } catch (error) {
+      console.error('Error deleting record:', error);
+    }
   };
 
-  const handleExport = () => {
+  // ✅ Export to Excel
+  const exportToExcel = () => {
     try {
       const ws = XLSX.utils.json_to_sheet(records);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Users');
-      const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-      saveAs(new Blob([buf]), 'users.xlsx');
-    } catch (err) {
-      alert('Export failed.');
-      console.error(err);
+      XLSX.writeFile(wb, 'UserData.xlsx');
+    } catch (error) {
+      console.error('Error exporting Excel:', error);
     }
   };
 
-  const sorted = [...records].sort((a, b) => {
-    if (a[sortKey] < b[sortKey]) return sortDir === 'asc' ? -1 : 1;
-    if (a[sortKey] > b[sortKey]) return sortDir === 'asc' ? 1 : -1;
-    return 0;
-  });
-
-  const filtered = sorted.filter((r) =>
-    Object.values(r).some((v) => v.toString().toLowerCase().includes(search.toLowerCase()))
-  );
+  // ✅ Edit Handler (redirect to Dashboard)
+  const handleEdit = (user) => {
+    try {
+      navigate('/dashboard', { state: { userToEdit: user } });
+    } catch (error) {
+      console.error('Error navigating to Dashboard:', error);
+    }
+  };
 
   return (
-    <div className="card">
-      <div className="table-toolbar">
-        <h3>User List</h3>
-        <div className="search-bar">
-          <input
-            type="text"
-            placeholder="Search..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          <button onClick={handleExport}>Export</button>
-        </div>
+    <div className="table-container">
+      <h2>User Records</h2>
+
+      <div className="toolbar">
+        <input
+          type="text"
+          placeholder="Search users..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <button onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}>
+          Sort by Name ({sortOrder === 'asc' ? '↓' : '↑'})
+        </button>
+        <button onClick={exportToExcel}>Export to Excel</button>
+        <button onClick={() => navigate('/dashboard')}>Add New User</button>
       </div>
 
-      <table className="data-table">
+      <table className="user-table">
         <thead>
           <tr>
-            {['id', 'name', 'email', 'phone', 'address'].map((key) => (
-              <th key={key} onClick={() => handleSort(key)}>
-                {key.toUpperCase()} {sortKey === key ? (sortDir === 'asc' ? '↑' : '↓') : ''}
-              </th>
-            ))}
+            <th>ID</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Phone</th>
+            <th>Address</th>
             <th>Actions</th>
           </tr>
         </thead>
         <tbody>
-          {filtered.length ? (
-            filtered.map((r) => (
-              <tr key={r.id}>
-                <td>{r.id}</td>
-                <td>{r.name}</td>
-                <td>{r.email}</td>
-                <td>{r.phone}</td>
-                <td>{r.address}</td>
+          {sorted.length > 0 ? (
+            sorted.map((user) => (
+              <tr key={user.id}>
+                <td>{user.id}</td>
+                <td>{user.name}</td>
+                <td>{user.email}</td>
+                <td>{user.phone}</td>
+                <td>{user.address}</td>
                 <td>
-                  <button onClick={() => onEdit(r)}>Edit</button>
-                  <button className="delete" onClick={() => onDelete(r.id)}>
-                    Delete
-                  </button>
+                  <button onClick={() => handleEdit(user)}>Edit</button>
+                  <button onClick={() => handleDelete(user.id)}>Delete</button>
                 </td>
               </tr>
             ))
           ) : (
             <tr>
-              <td colSpan="6" style={{ textAlign: 'center' }}>
-                No records found
-              </td>
+              <td colSpan="6">No records found</td>
             </tr>
           )}
         </tbody>
