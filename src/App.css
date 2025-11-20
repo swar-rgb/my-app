@@ -59,11 +59,3 @@ th, td {
   text-align: center;
 }
 
-.export-btn {
-  margin: 10px 0;
-  background: #28a745;
-}
-
-.export-btn:hover {
-  background: #218838;
-}

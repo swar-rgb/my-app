@@ -8,7 +8,6 @@ export default function TablePage({ onLogout }) {
   const [records, setRecords] = useState([]);
   const navigate = useNavigate();
 
-  // Load user data from localStorage
   useEffect(() => {
     try {
       const data = readDB();
@@ -19,10 +18,8 @@ export default function TablePage({ onLogout }) {
     }
   }, []);
 
-  // Handle deleting a record
   const handleDelete = (id) => {
     try {
-      if (!window.confirm('Are you sure you want to delete this record?')) return;
       const updated = records.filter((r) => r.id !== id);
       setRecords(updated);
       writeDB(updated);
@@ -32,22 +29,19 @@ export default function TablePage({ onLogout }) {
     }
   };
 
-  // Optionally handle edit — for now, it just logs
+  // ✔ Clean edit handler — no alert
   const handleEdit = (record) => {
-    console.log('Edit clicked:', record);
-    alert('Editing directly from table is disabled. Go to Dashboard to edit users.');
+    navigate('/dashboard', { state: { userToEdit: record } });
   };
 
   return (
     <div className="table-page">
-      {/* Top toolbar */}
       <div className="toolbar">
         <button onClick={() => navigate('/dashboard')}>⬅ Back to Dashboard</button>
         <strong>User Data Table</strong>
         <button onClick={onLogout}>Logout</button>
       </div>
 
-      {/* Table display */}
       <UserTable records={records} onEdit={handleEdit} onDelete={handleDelete} />
     </div>
   );
